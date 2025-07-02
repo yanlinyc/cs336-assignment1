@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from multiprocessing import Pool
 import regex as re
-from collections import Counter
+from collections import Counter, defaultdict
 import time
 
 from tqdm.auto import tqdm
@@ -13,44 +13,82 @@ from cs336_basics.io_utils import save_pickle, load_pickle
 type TokenCounter = dict[tuple[bytes], int]
 
 
+def _apply_pair_updates(
+    pair_counts: TokenCounter, pair_updates: dict[tuple[bytes, bytes], int]
+) -> None:
+    """Apply batched updates to pair_counts."""
+    for pair, delta in pair_updates.items():
+        if delta != 0:
+            new_count = pair_counts.get(pair, 0) + delta
+            if new_count > 0:
+                pair_counts[pair] = new_count
+            elif pair in pair_counts:
+                del pair_counts[pair]
+
+
 def merge_tokens(
-    cur_tokens: TokenCounter, pair_counts: TokenCounter
+    cur_tokens: TokenCounter,
+    pair_counts: TokenCounter,
 ) -> tuple[TokenCounter, bytes, tuple[bytes, bytes]]:
-    # Find the most frequent pair
+
     best_pair = max(pair_counts, key=lambda pair: (pair_counts[pair], pair))
     new_token = best_pair[0] + best_pair[1]
 
-    def dec_(pair: tuple[bytes], count: int):
-        pair_counts[pair] -= count
-        if pair_counts[pair] == 0:
-            del pair_counts[pair]
+    # Create lookup for O(1) membership testing
+    target_first, target_second = best_pair
 
     new_tokens: TokenCounter = Counter()
+    pair_updates = defaultdict(int)
+
     for tokens, count in cur_tokens.items():
-        # Replace occurrences of best_pair with new_token
-        new_sequence: list[bytes] = []
+        # Skip short sequences that can't contain pairs
+        if len(tokens) < 2:
+            new_tokens[tokens] = count
+            continue
+
+        # Fast scan for target pair existence
+        has_target = False
+        for i in range(len(tokens) - 1):
+            if tokens[i] == target_first and tokens[i + 1] == target_second:
+                has_target = True
+                break
+
+        if not has_target:
+            new_tokens[tokens] = count
+            continue
+
+        # Process sequence with target pair
+        new_sequence = []
         i = 0
+
         while i < len(tokens):
-            if i < len(tokens) - 1 and (tokens[i], tokens[i + 1]) == best_pair:
+            if i < len(tokens) - 1 and tokens[i] == target_first and tokens[i + 1] == target_second:
+
+                # Record pair changes around merge point
+                if i > 0:
+                    old_pair = (tokens[i - 1], target_first)
+                    new_pair = (tokens[i - 1], new_token)
+                    pair_updates[old_pair] -= count
+                    pair_updates[new_pair] += count
+
+                if i + 2 < len(tokens):
+                    old_pair = (target_second, tokens[i + 2])
+                    new_pair = (new_token, tokens[i + 2])
+                    pair_updates[old_pair] -= count
+                    pair_updates[new_pair] += count
+
                 new_sequence.append(new_token)
-
-                # Update pair counts for adjacent tokens
-
-                if i > 0 and (prev_token := tokens[i - 1],):
-                    pair_counts[(prev_token, new_token)] += count
-                    dec_((prev_token, best_pair[0]), count)
-
-                if i + 2 < len(tokens) and (next_token := tokens[i + 2],):
-                    pair_counts[(new_token, next_token)] += count
-                    dec_((best_pair[1], next_token), count)
-
                 i += 2
             else:
                 new_sequence.append(tokens[i])
                 i += 1
+
         new_tokens[tuple(new_sequence)] += count
 
+    # Apply updates
+    _apply_pair_updates(pair_counts, pair_updates)
     del pair_counts[best_pair]
+
     return new_tokens, new_token, best_pair
 
 
@@ -173,11 +211,14 @@ def train_bpe_tokenizer(
             output_dir=output_dir,
         )
 
-    u_pre_tokens = sorted(set((b"".join(k)).decode("utf-8") for k in pre_tokens.keys()))
-    print(f"Unique pre-tokens: {len(u_pre_tokens)}")
-    print(f"First 10 unique pre-tokens: {u_pre_tokens[:10]}")
-    print(f"Last 10 unique pre-tokens: {u_pre_tokens[-10:]}")
-    print(f"Random 10 unique pre-tokens: {u_pre_tokens[::max(1, len(u_pre_tokens) // 10)][:10]}")
+    if debug:
+        u_pre_tokens = sorted(set((b"".join(k)).decode("utf-8") for k in pre_tokens.keys()))
+        print(f"Unique pre-tokens: {len(u_pre_tokens)}")
+        print(f"First 10 unique pre-tokens: {u_pre_tokens[:10]}")
+        print(f"Last 10 unique pre-tokens: {u_pre_tokens[-10:]}")
+        print(
+            f"Random 10 unique pre-tokens: {u_pre_tokens[::max(1, len(u_pre_tokens) // 10)][:10]}"
+        )
 
     num_merges = vocab_size - len(vocab)
     print(f"Starting BPE training with {num_merges} merges.")
@@ -221,9 +262,6 @@ def train_bpe_tokenizer(
 
 if __name__ == "__main__":
     import argparse
-    import cProfile, pstats, io
-    from pstats import SortKey
-    from scalene import scalene_profiler
 
     parser = argparse.ArgumentParser(description="Train a BPE tokenizer.")
     parser.add_argument(
@@ -256,8 +294,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.profile:
-        # pr = cProfile.Profile()
-        # pr.enable()
+        from scalene import scalene_profiler
+
         scalene_profiler.start()
 
     vocab, merges = train_bpe_tokenizer(
@@ -269,13 +307,6 @@ if __name__ == "__main__":
     )
     if args.profile:
         scalene_profiler.stop()
-        # pr.disable()
-        # s = io.StringIO()
-        # ps = pstats.Stats(pr, stream=s).sort_stats(SortKey.CUMULATIVE)
-        # ps.print_stats()
-        # with open(os.path.join(args.output_dir, "bpe_cprofile.txt"), "w") as f:
-        #     f.write(s.getvalue())
-        # print(s.getvalue())
     print(f"Vocabulary size: {len(vocab)}")
     print(f"Number of merges: {len(merges)}")
     print("First 10 merges:", merges[:10])
