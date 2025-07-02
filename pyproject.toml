@@ -46,6 +46,8 @@ line-length = 120
 [dependency-groups]
 dev = [
     "ipykernel>=6.29.5",
+    "jupyter>=1.1.1",
+    "scalene>=1.5.51",
 ]
 
 [tool.ruff.lint]
