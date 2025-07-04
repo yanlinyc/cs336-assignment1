@@ -1,5 +1,80 @@
 import os
+from pathlib import Path
+from multiprocessing import Pool
+import regex as re
+from collections import Counter
+import time
 from typing import BinaryIO
+
+from tqdm.auto import tqdm
+from cs336_basics.io_utils import save_pickle
+
+
+def pre_tokenize_impl(
+    start: int, end: int, input_path: str | os.PathLike, special_tokens: list[str]
+) -> dict[tuple[bytes, ...], int]:
+    with open(input_path, "rb") as f:
+        f.seek(start)
+        chunk = f.read(end - start).decode("utf-8", errors="ignore")
+
+    pattern = "|".join(re.escape(token) for token in special_tokens)
+    splits = re.split(pattern, chunk)
+
+    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+    pre_tokens: dict[tuple[bytes, ...], int] = Counter()
+    for text in splits:
+        for match in re.finditer(PAT, text):
+            pre_tokens[tuple(b.to_bytes() for b in match.group(0).encode("utf-8"))] += 1
+
+    return pre_tokens
+
+
+def pre_tokenize_star(
+    args: tuple[int, int, str | os.PathLike, list[str]],
+) -> dict[tuple[bytes, ...], int]:
+    """Helper function to unpack arguments for multiprocessing."""
+    return pre_tokenize_impl(*args)
+
+
+def pre_tokenize(
+    input_path: str | os.PathLike,
+    special_tokens: list[str],
+    output_dir: str | os.PathLike | None,
+) -> dict[tuple[bytes, ...], int]:
+    start_time = time.time()
+    with open(input_path, "rb") as f:
+        boundaries = find_chunk_boundaries(
+            file=f,
+            split_special_token="<|endoftext|>".encode("utf-8"),
+            desired_chunk_size_in_bytes=1024 * 1024 * 64,  # 64 MB per chunk
+        )
+
+    num_processes = max(1, os.cpu_count() - 4)
+    with Pool(processes=num_processes) as pool:
+        args = [
+            (start, end, input_path, special_tokens)
+            for start, end in zip(boundaries[:-1], boundaries[1:])
+        ]
+        print(
+            f"Using {num_processes} processes for parallelizing pre-tokenization of {len(args)} chunks."
+        )
+        pre_tokens_iter = tqdm(
+            pool.imap_unordered(pre_tokenize_star, args), total=len(args), desc="Pre-tokenizing"
+        )
+        pre_tokens: dict[tuple[bytes, ...], int] = Counter()
+        for tokens in pre_tokens_iter:
+            pre_tokens.update(tokens)
+    end_time = time.time()
+    print(
+        f"Pre-tokenization took {end_time - start_time:.2f} seconds. "
+        f"Found {len(pre_tokens)} unique tokens."
+    )
+
+    if output_dir:
+        output_file = os.path.join(output_dir, f"{Path(input_path).stem}-pre_tokens.pkl")
+        save_pickle(output_file, pre_tokens)
+        print(f"Pre-tokens saved to {output_file}.")
+    return pre_tokens
 
 
 def find_chunk_boundaries(

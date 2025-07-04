@@ -592,9 +592,14 @@ def run_train_bpe(
                 Merges are ordered by order of creation.
     """
     from cs336_basics.bpe import train_bpe_tokenizer
+    from cs336_basics.bpe_optim import train_bpe_tokenizer_optim
 
-    return train_bpe_tokenizer(
+    _train = train_bpe_tokenizer
+    # _train = train_bpe_tokenizer_optim
+
+    return _train(
         input_path=input_path,
         vocab_size=vocab_size,
         special_tokens=special_tokens,
+        debug=False,
     )

@@ -1,29 +1,13 @@
 import os
 from pathlib import Path
-from multiprocessing import Pool
-import regex as re
-from collections import Counter, defaultdict
-import time
+from collections import defaultdict
 
 from tqdm.auto import tqdm
 
-from cs336_basics.pretokenization import find_chunk_boundaries
+from cs336_basics.pretokenization import pre_tokenize
 from cs336_basics.io_utils import save_pickle, load_pickle
 
 type TokenCounter = dict[tuple[bytes], int]
-
-
-def _apply_pair_updates(
-    pair_counts: TokenCounter, pair_updates: dict[tuple[bytes, bytes], int]
-) -> None:
-    """Apply batched updates to pair_counts."""
-    for pair, delta in pair_updates.items():
-        if delta != 0:
-            new_count = pair_counts.get(pair, 0) + delta
-            if new_count > 0:
-                pair_counts[pair] = new_count
-            elif pair in pair_counts:
-                del pair_counts[pair]
 
 
 def merge_tokens(
@@ -37,7 +21,7 @@ def merge_tokens(
     # Create lookup for O(1) membership testing
     target_first, target_second = best_pair
 
-    new_tokens: TokenCounter = Counter()
+    new_tokens: TokenCounter = defaultdict(int)
     pair_updates = defaultdict(int)
 
     for tokens, count in cur_tokens.items():
@@ -86,75 +70,17 @@ def merge_tokens(
         new_tokens[tuple(new_sequence)] += count
 
     # Apply updates
-    _apply_pair_updates(pair_counts, pair_updates)
+    """Apply batched updates to pair_counts."""
+    for pair, delta in pair_updates.items():
+        if delta != 0:
+            new_count = pair_counts.get(pair, 0) + delta
+            if new_count > 0:
+                pair_counts[pair] = new_count
+            elif pair in pair_counts:
+                del pair_counts[pair]
     del pair_counts[best_pair]
 
     return new_tokens, new_token, best_pair
-
-
-def pre_tokenize_impl(
-    start: int, end: int, input_path: str | os.PathLike, special_tokens: list[str]
-) -> TokenCounter:
-    with open(input_path, "rb") as f:
-        f.seek(start)
-        chunk = f.read(end - start).decode("utf-8", errors="ignore")
-
-    pattern = "|".join(re.escape(token) for token in special_tokens)
-    splits = re.split(pattern, chunk)
-
-    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-    pre_tokens: TokenCounter = Counter()
-    for text in splits:
-        for match in re.finditer(PAT, text):
-            pre_tokens[tuple(b.to_bytes() for b in match.group(0).encode("utf-8"))] += 1
-
-    return pre_tokens
-
-
-def pre_tokenize_star(args: tuple[int, int, str | os.PathLike, list[str]]) -> TokenCounter:
-    """Helper function to unpack arguments for multiprocessing."""
-    return pre_tokenize_impl(*args)
-
-
-def pre_tokenize(
-    input_path: str | os.PathLike,
-    special_tokens: list[str],
-    output_dir: str | os.PathLike | None,
-) -> TokenCounter:
-    start_time = time.time()
-    with open(input_path, "rb") as f:
-        boundaries = find_chunk_boundaries(
-            file=f,
-            split_special_token="<|endoftext|>".encode("utf-8"),
-            desired_chunk_size_in_bytes=1024 * 1024 * 64,  # 64 MB per chunk
-        )
-
-    num_processes = max(1, os.cpu_count() - 4)
-    with Pool(processes=num_processes) as pool:
-        args = [
-            (start, end, input_path, special_tokens)
-            for start, end in zip(boundaries[:-1], boundaries[1:])
-        ]
-        print(
-            f"Using {num_processes} processes for parallelizing pre-tokenization of {len(args)} chunks."
-        )
-        pre_tokens_iter = tqdm(
-            pool.imap_unordered(pre_tokenize_star, args), total=len(args), desc="Pre-tokenizing"
-        )
-        pre_tokens: TokenCounter = Counter()
-        for tokens in pre_tokens_iter:
-            pre_tokens.update(tokens)
-    end_time = time.time()
-    print(
-        f"Pre-tokenization took {end_time - start_time:.2f} seconds. "
-        f"Found {len(pre_tokens)} unique tokens."
-    )
-
-    if output_dir:
-        output_file = os.path.join(output_dir, f"{Path(input_path).stem}-pre_tokens.pkl")
-        save_pickle(output_file, pre_tokens)
-        print(f"Pre-tokens saved to {output_file}.")
-    return pre_tokens
 
 
 def train_bpe_tokenizer(
@@ -223,7 +149,7 @@ def train_bpe_tokenizer(
     num_merges = vocab_size - len(vocab)
     print(f"Starting BPE training with {num_merges} merges.")
 
-    pair_counts: TokenCounter = Counter()
+    pair_counts: TokenCounter = defaultdict(int)
     for tokens, count in pre_tokens.items():
         for i in range(len(tokens) - 1):
             pair_counts[(tokens[i], tokens[i + 1])] += count
@@ -234,10 +160,13 @@ def train_bpe_tokenizer(
         if not cur_tokens:
             print("[WARN] No more pairs to merge.")
             break
+
         if debug:
             print("---")
+            best_pair = max(pair_counts, key=lambda pair: (pair_counts[pair], pair))
             print(f"Current pairs:")
-            print(pair_counts)
+            print(f"Merge {iter + 1}/{num_merges}: {best_pair}")
+            print(sorted(pair_counts.items(), key=lambda x: (x[1], x[0]), reverse=True)[:10])
 
         cur_tokens, new_token, best_pair = merge_tokens(cur_tokens, pair_counts)
         vocab.append(new_token)
@@ -248,9 +177,6 @@ def train_bpe_tokenizer(
                 f"- Iteration {iter + 1}/{num_merges}: {len(cur_tokens)} tokens, {len(pair_counts)} pairs, "
                 f"Merged `{new_token.decode('utf-8')}`"
             )
-
-        if debug:
-            print(f"Merge {iter + 1}/{num_merges}: {new_token.decode('utf-8')}")
 
     result = ({i: v for i, v in enumerate(vocab)}, merges)
     if output_dir:
