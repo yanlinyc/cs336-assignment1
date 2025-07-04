@@ -29,7 +29,11 @@ def run_linear(
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
 
-    raise NotImplementedError
+    from cs336_basics.linear import Linear
+
+    m = Linear(d_in, d_out)
+    m.load_state_dict({"weight": weights})
+    return m(in_features)
 
 
 def run_embedding(
@@ -300,7 +304,7 @@ def run_transformer_lm(
         num_heads (int): Number of heads to use in multi-headed attention. `d_model` must be
             evenly divisible by `num_heads`.
         d_ff (int): Dimensionality of the feed-forward inner layer (section 3.3).
-        rope_theta (float): The RoPE $\Theta$ parameter.
+        rope_theta (float): The RoPE $\\Theta$ parameter.
         weights (dict[str, Tensor]):
             State dict of our reference implementation. {num_layers} refers to an
             integer between `0` and `num_layers - 1` (the layer index).
@@ -592,10 +596,8 @@ def run_train_bpe(
                 Merges are ordered by order of creation.
     """
     from cs336_basics.bpe import train_bpe_tokenizer
-    from cs336_basics.bpe_optim import train_bpe_tokenizer_optim
 
     _train = train_bpe_tokenizer
-    # _train = train_bpe_tokenizer_optim
 
     return _train(
         input_path=input_path,
