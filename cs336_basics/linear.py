@@ -12,6 +12,14 @@ class Linear(nn.Module):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
+        """
+        Linear layer that initializes weights with a truncated normal distribution.
+        Args:
+            in_features (int): Number of input features.
+            out_features (int): Number of output features.
+            device (torch.device | None): Device to place the weights on. Defaults to None.
+            dtype (torch.dtype | None): Data type of the weights. Defaults to None.
+        """
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
