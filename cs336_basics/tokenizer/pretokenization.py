@@ -7,7 +7,8 @@ import time
 from typing import BinaryIO
 
 from tqdm.auto import tqdm
-from cs336_basics.io_utils import save_pickle
+
+from cs336_basics.utils import save_pickle
 
 
 def pre_tokenize_impl(

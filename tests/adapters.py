@@ -29,7 +29,7 @@ def run_linear(
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
 
-    from cs336_basics.linear import Linear
+    from cs336_basics.modules import Linear
 
     m = Linear(d_in, d_out)
     m.load_state_dict({"weight": weights})
@@ -54,7 +54,7 @@ def run_embedding(
     Returns:
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
-    from cs336_basics.embedding import Embedding
+    from cs336_basics.modules import Embedding
 
     m = Embedding(vocab_size, d_model)
     m.load_state_dict({"weight": weights})
@@ -90,7 +90,17 @@ def run_swiglu(
     # swiglu.w1.weight.data = w1_weight
     # swiglu.w2.weight.data = w2_weight
     # swiglu.w3.weight.data = w3_weight
-    raise NotImplementedError
+    from cs336_basics.modules import SwiGLU
+
+    m = SwiGLU(d_model, d_ff)
+    m.load_state_dict(
+        {
+            "fc1.weight": w1_weight,
+            "fc2.weight": w2_weight,
+            "fc3.weight": w3_weight,
+        }
+    )
+    return m(in_features)
 
 
 def run_scaled_dot_product_attention(
@@ -385,7 +395,7 @@ def run_rmsnorm(
         Float[Tensor,"... d_model"]: Tensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
-    from cs336_basics.rmsnorm import RMSNorm
+    from cs336_basics.modules import RMSNorm
 
     m = RMSNorm(d_model, eps)
     m.load_state_dict({"weight": weights})
@@ -602,7 +612,7 @@ def run_train_bpe(
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
     """
-    from cs336_basics.bpe import train_bpe_tokenizer
+    from cs336_basics.tokenizer.bpe import train_bpe_tokenizer
 
     _train = train_bpe_tokenizer
 

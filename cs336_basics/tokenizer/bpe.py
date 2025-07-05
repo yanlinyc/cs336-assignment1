@@ -4,8 +4,10 @@ from collections import defaultdict
 
 from tqdm.auto import tqdm
 
-from cs336_basics.pretokenization import pre_tokenize
-from cs336_basics.io_utils import save_pickle, load_pickle
+
+from cs336_basics.utils import save_pickle, load_pickle
+
+from .pretokenization import pre_tokenize
 
 type TokenCounter = dict[tuple[bytes], int]
 

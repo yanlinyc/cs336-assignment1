@@ -2,6 +2,9 @@ import os
 import pickle
 
 
+__all__ = ["load_pickle", "save_pickle"]
+
+
 def save_pickle(path: str | os.PathLike, data):
     """Save an object to a pickle file."""
     if not isinstance(path, str) and not isinstance(path, os.PathLike):

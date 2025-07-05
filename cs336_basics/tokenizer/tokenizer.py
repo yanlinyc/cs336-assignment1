@@ -2,7 +2,7 @@ from typing import Self, Iterable, Iterator
 
 import regex as re
 
-from cs336_basics.io_utils import load_pickle
+from cs336_basics.utils import load_pickle
 
 
 class BPETokenizer:
