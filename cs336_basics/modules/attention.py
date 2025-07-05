@@ -1,15 +1,17 @@
 import math
 import torch
+from torch import Tensor
 import torch.nn as nn
 from einops import einsum, rearrange, reduce
+from jaxtyping import Float, Bool
 
 
 def scale_dot_product_attention(
-    query: torch.Tensor,
-    key: torch.Tensor,
-    value: torch.Tensor,
-    mask: torch.Tensor | None = None,
-) -> torch.Tensor:
+    query: Float[Tensor, " ... seq_len_q d_k"],
+    key: Float[Tensor, " ... seq_len_k d_k"],
+    value: Float[Tensor, " ... seq_len_k d_v"],
+    mask: Float[Bool, " ... seq_len_q seq_len_k"] | None = None,
+) -> Float[Tensor, " ... seq_len_q d_v"]:
     """
     Computes scaled dot-product attention.
 
@@ -34,7 +36,7 @@ def scale_dot_product_attention(
     )
 
 
-def softmax(x: torch.Tensor, dim: int) -> torch.Tensor:
+def softmax(x: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
     """
     Computes the softmax of the input tensor along the specified dimension.
 

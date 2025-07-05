@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 from einops import einsum, rearrange
+from torch import Tensor
+from jaxtyping import Float, Int
 
 
 class RotaryPositionalEmbedding(nn.Module):
@@ -41,7 +43,11 @@ class RotaryPositionalEmbedding(nn.Module):
             persistent=False,
         )
 
-    def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x: Float[Tensor, "... seq_len d_k"],
+        token_positions: Int[Tensor, "... seq_len"],
+    ) -> Float[Tensor, "... seq_len d_k"]:
         # https://medium.com/@parulsharmmaa/understanding-rotary-positional-embedding-and-implementation-9f4ad8b03e32
         rope_cache = self.cache[token_positions]
         xshaped = rearrange(

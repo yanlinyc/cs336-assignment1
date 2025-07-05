@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from torch import Tensor
+from jaxtyping import Float
 
 from .linear import Linear
 
@@ -33,7 +35,7 @@ class SwiGLU(nn.Module):
         self.fc2 = Linear(self.d_ff, self.d_model, **factory_kwargs)
         self.fc3 = Linear(self.d_model, self.d_ff, **factory_kwargs)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Float[Tensor, "... d_model"]) -> Float[Tensor, "... d_model"]:
         x1 = self.fc1(x)
         silu = torch.sigmoid(x1) * x1  # Swish activation
         x2 = silu * (self.fc3(x))

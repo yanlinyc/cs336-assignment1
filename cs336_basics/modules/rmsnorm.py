@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 from einops import einsum, reduce
+from torch import Tensor
+from jaxtyping import Float
 
 
 class RMSNorm(nn.Module):
@@ -24,7 +26,7 @@ class RMSNorm(nn.Module):
         self.eps = eps
         self.weight = nn.Parameter(torch.ones(d_model, device=device, dtype=dtype))
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Float[Tensor, "... d_model"]) -> Float[Tensor, "... d_model"]:
         in_dtype = x.dtype
         # Convert to float32 for numerical stability to avoid overflow when squaring
         x = x.to(torch.float32)
