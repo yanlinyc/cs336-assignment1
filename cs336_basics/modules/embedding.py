@@ -27,4 +27,4 @@ class Embedding(nn.Module):
         nn.init.trunc_normal_(self.weight, a=-3, b=3)
 
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
-        return torch.index_select(self.weight, 0, token_ids.view(-1)).view(*token_ids.shape, -1)
+        return self.weight[token_ids]
