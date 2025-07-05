@@ -5,12 +5,100 @@ import torch.nn as nn
 from einops import einsum, rearrange, reduce
 from jaxtyping import Float, Bool
 
+from .linear import Linear
 
-def scale_dot_product_attention(
+
+class MultiHeadSelfAttention(nn.Module):
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        max_seq_len: int | None = None,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        """
+        Multi-head self-attention layer.
+        Args:
+            d_model (int): Dimensionality of the input and output vectors.
+            num_heads (int): Number of attention heads.
+            device (torch.device | None): Device to place the weights on. Defaults to None.
+            dtype (torch.dtype | None): Data type of the weights. Defaults to None.
+        """
+        factory_kwargs = {"device": device, "dtype": dtype}
+        if d_model % num_heads != 0:
+            raise ValueError(f"d_model ({d_model}) must be divisible by num_heads ({num_heads})")
+        super().__init__()
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
+        self.d_v = d_model // num_heads
+        self.max_seq_len = max_seq_len
+
+        self.q_proj = Linear(d_model, num_heads * self.d_k, **factory_kwargs)
+        self.k_proj = Linear(d_model, num_heads * self.d_k, **factory_kwargs)
+        self.v_proj = Linear(d_model, num_heads * self.d_v, **factory_kwargs)
+        self.o_proj = Linear(num_heads * self.d_v, d_model, **factory_kwargs)
+        if max_seq_len is not None:
+            mask = self._create_causal_mask(max_seq_len, device=device)
+            self.register_buffer("causal_mask", mask, persistent=False)
+
+    def forward(
+        self, x: Float[Tensor, "... seq_len d_model"]
+    ) -> Float[Tensor, "... seq_len d_model"]:
+        # x: (..., seq_len, d_model)
+        seq_len = x.shape[-2]
+        if self.max_seq_len is not None:
+            mask = self.causal_mask[:seq_len, :seq_len]
+        else:
+            mask = self._create_causal_mask(seq_len, device=x.device)
+
+        query = self.q_proj(x)
+        key = self.k_proj(x)
+        value = self.v_proj(x)
+        query = rearrange(
+            query,
+            "... seq_len (num_heads d_k) -> ... num_heads seq_len d_k",
+            num_heads=self.num_heads,
+        )
+        key = rearrange(
+            key,
+            "... seq_len (num_heads d_k) -> ... num_heads seq_len d_k",
+            num_heads=self.num_heads,
+        )
+        value = rearrange(
+            value,
+            "... seq_len (num_heads d_v) -> ... num_heads seq_len d_v",
+            num_heads=self.num_heads,
+        )
+
+        mask = mask.view(*([1] * (len(query.shape) - 2)), seq_len, seq_len)
+        attn_output = scaled_dot_product_attention(query, key, value, mask=mask)
+        attn_output = rearrange(
+            attn_output, "... num_heads seq_len d_v -> ... seq_len (num_heads d_v)"
+        )
+        return self.o_proj(attn_output)
+
+    def _create_causal_mask(
+        self, seq_len: int, device: torch.device | None = None
+    ) -> Bool[Tensor, "seq_len seq_len"]:
+        """
+        Creates a causal mask for the attention mechanism.
+
+        Args:
+            seq_len (int): The sequence length for which to create the mask.
+
+        Returns:
+            torch.Tensor: A causal mask of shape (seq_len, seq_len).
+        """
+        return torch.tril(torch.ones(seq_len, seq_len, device=device)).bool()
+
+
+def scaled_dot_product_attention(
     query: Float[Tensor, " ... seq_len_q d_k"],
     key: Float[Tensor, " ... seq_len_k d_k"],
     value: Float[Tensor, " ... seq_len_k d_v"],
-    mask: Float[Bool, " ... seq_len_q seq_len_k"] | None = None,
+    mask: Bool[Tensor, " ... seq_len_q seq_len_k"] | None = None,
 ) -> Float[Tensor, " ... seq_len_q d_v"]:
     """
     Computes scaled dot-product attention.
