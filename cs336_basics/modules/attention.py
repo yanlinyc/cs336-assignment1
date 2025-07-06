@@ -3,9 +3,10 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 from einops import einsum, rearrange
-from jaxtyping import Float, Bool
+from jaxtyping import Float, Bool, Int
 
 from .linear import Linear
+from .rope import RotaryPositionalEmbedding
 
 
 class MultiHeadSelfAttention(nn.Module):
@@ -14,6 +15,7 @@ class MultiHeadSelfAttention(nn.Module):
         d_model: int,
         num_heads: int,
         max_seq_len: int | None = None,
+        rope: RotaryPositionalEmbedding | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -22,6 +24,8 @@ class MultiHeadSelfAttention(nn.Module):
         Args:
             d_model (int): Dimensionality of the input and output vectors.
             num_heads (int): Number of attention heads.
+            max_seq_len (int | None): Maximum sequence length for which to create a causal mask. Defaults to None.
+            rope (RotaryPositionalEmbedding | None): Rotary positional embedding instance. Defaults to None.
             device (torch.device | None): Device to place the weights on. Defaults to None.
             dtype (torch.dtype | None): Data type of the weights. Defaults to None.
         """
@@ -33,6 +37,7 @@ class MultiHeadSelfAttention(nn.Module):
         self.num_heads = num_heads
         self.d_k = d_model // num_heads
         self.max_seq_len = max_seq_len
+        self.rope = rope
 
         # Combined QKV projection for efficiency
         self.qkv_proj = Linear(d_model, 3 * d_model, **factory_kwargs)
@@ -42,7 +47,9 @@ class MultiHeadSelfAttention(nn.Module):
             self.register_buffer("causal_mask", mask, persistent=False)
 
     def forward(
-        self, x: Float[Tensor, "... seq_len d_model"]
+        self,
+        x: Float[Tensor, "... seq_len d_model"],
+        token_positions: Int[Tensor, "... seq_len"] | None = None,
     ) -> Float[Tensor, "... seq_len d_model"]:
         # x: (..., seq_len, d_model)
         seq_len = x.shape[-2]
@@ -58,6 +65,13 @@ class MultiHeadSelfAttention(nn.Module):
             stack=3,
             num_heads=self.num_heads,
         )
+
+        # apply shared RoPE if provided
+        if self.rope is not None:
+            if token_positions is None:
+                token_positions = torch.arange(seq_len, device=x.device)
+            query = self.rope(query, token_positions)
+            key = self.rope(key, token_positions)
 
         attn_output = scaled_dot_product_attention(query, key, value, mask=mask)
         attn_output = rearrange(

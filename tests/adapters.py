@@ -95,9 +95,9 @@ def run_swiglu(
     m = SwiGLU(d_model, d_ff)
     m.load_state_dict(
         {
-            "fc1.weight": w1_weight,
-            "fc2.weight": w2_weight,
-            "fc3.weight": w3_weight,
+            "w1.weight": w1_weight,
+            "w2.weight": w2_weight,
+            "w3.weight": w3_weight,
         }
     )
     return m(in_features)
@@ -208,7 +208,27 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    from cs336_basics.modules import RotaryPositionalEmbedding, MultiHeadSelfAttention
+
+    d_k = d_model // num_heads
+    rope = RotaryPositionalEmbedding(
+        theta=theta,
+        d_k=d_k,
+        max_seq_len=max_seq_len,
+    )
+    m = MultiHeadSelfAttention(
+        d_model=d_model,
+        num_heads=num_heads,
+        max_seq_len=max_seq_len,
+        rope=rope,
+        device=in_features.device,
+        dtype=in_features.dtype,
+    )
+
+    qkv = torch.cat([q_proj_weight, k_proj_weight, v_proj_weight])
+    m.load_state_dict({"qkv_proj.weight": qkv, "o_proj.weight": o_proj_weight})
+
+    return m(in_features, token_positions)
 
 
 def run_rope(
@@ -310,7 +330,27 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    from cs336_basics.modules import TransformerBlock, RotaryPositionalEmbedding
+
+    rope = RotaryPositionalEmbedding(theta=theta, d_k=d_model // num_heads, max_seq_len=max_seq_len)
+
+    transformer_block = TransformerBlock(
+        d_model=d_model,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        max_seq_len=max_seq_len,
+        rope=rope,
+    )
+    q_proj = weights.pop("attn.q_proj.weight")
+    k_proj = weights.pop("attn.k_proj.weight")
+    v_proj = weights.pop("attn.v_proj.weight")
+    qkv_proj = torch.cat([q_proj, k_proj, v_proj])
+    weights["attn.qkv_proj.weight"] = qkv_proj
+    weights["attn.o_proj.weight"] = weights.pop("attn.output_proj.weight")
+    transformer_block.load_state_dict(weights)
+
+    # Run the Transformer block
+    return transformer_block(in_features)
 
 
 def run_transformer_lm(

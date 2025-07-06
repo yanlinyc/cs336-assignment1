@@ -31,12 +31,12 @@ class SwiGLU(nn.Module):
         else:
             self.d_ff = d_ff
 
-        self.fc1 = Linear(self.d_model, self.d_ff, **factory_kwargs)
-        self.fc2 = Linear(self.d_ff, self.d_model, **factory_kwargs)
-        self.fc3 = Linear(self.d_model, self.d_ff, **factory_kwargs)
+        self.w1 = Linear(self.d_model, self.d_ff, **factory_kwargs)
+        self.w2 = Linear(self.d_ff, self.d_model, **factory_kwargs)
+        self.w3 = Linear(self.d_model, self.d_ff, **factory_kwargs)
 
     def forward(self, x: Float[Tensor, "... d_model"]) -> Float[Tensor, "... d_model"]:
-        x1 = self.fc1(x)
+        x1 = self.w1(x)
         silu = torch.sigmoid(x1) * x1  # Swish activation
-        x2 = silu * (self.fc3(x))
-        return self.fc2(x2)
+        x2 = silu * (self.w3(x))
+        return self.w2(x2)
