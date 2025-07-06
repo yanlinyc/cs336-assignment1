@@ -2,7 +2,7 @@ import math
 import torch
 from torch import Tensor
 import torch.nn as nn
-from einops import einsum, rearrange, reduce
+from einops import einsum, rearrange
 from jaxtyping import Float, Bool
 
 from .linear import Linear
@@ -32,13 +32,11 @@ class MultiHeadSelfAttention(nn.Module):
         self.d_model = d_model
         self.num_heads = num_heads
         self.d_k = d_model // num_heads
-        self.d_v = d_model // num_heads
         self.max_seq_len = max_seq_len
 
-        self.q_proj = Linear(d_model, num_heads * self.d_k, **factory_kwargs)
-        self.k_proj = Linear(d_model, num_heads * self.d_k, **factory_kwargs)
-        self.v_proj = Linear(d_model, num_heads * self.d_v, **factory_kwargs)
-        self.o_proj = Linear(num_heads * self.d_v, d_model, **factory_kwargs)
+        # Combined QKV projection for efficiency
+        self.qkv_proj = Linear(d_model, 3 * d_model, **factory_kwargs)
+        self.o_proj = Linear(d_model, d_model, **factory_kwargs)
         if max_seq_len is not None:
             mask = self._create_causal_mask(max_seq_len, device=device)
             self.register_buffer("causal_mask", mask, persistent=False)
@@ -53,26 +51,14 @@ class MultiHeadSelfAttention(nn.Module):
         else:
             mask = self._create_causal_mask(seq_len, device=x.device)
 
-        query = self.q_proj(x)
-        key = self.k_proj(x)
-        value = self.v_proj(x)
-        query = rearrange(
-            query,
-            "... seq_len (num_heads d_k) -> ... num_heads seq_len d_k",
-            num_heads=self.num_heads,
-        )
-        key = rearrange(
-            key,
-            "... seq_len (num_heads d_k) -> ... num_heads seq_len d_k",
-            num_heads=self.num_heads,
-        )
-        value = rearrange(
-            value,
-            "... seq_len (num_heads d_v) -> ... num_heads seq_len d_v",
+        qkv = self.qkv_proj(x)  # (..., seq_len, 3 * d_model)
+        query, key, value = rearrange(
+            qkv,
+            "... seq_len (stack num_heads d_k) -> stack ... num_heads seq_len d_k",
+            stack=3,
             num_heads=self.num_heads,
         )
 
-        mask = mask.view(*([1] * (len(query.shape) - 2)), seq_len, seq_len)
         attn_output = scaled_dot_product_attention(query, key, value, mask=mask)
         attn_output = rearrange(
             attn_output, "... num_heads seq_len d_v -> ... seq_len (num_heads d_v)"

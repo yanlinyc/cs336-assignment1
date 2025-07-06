@@ -165,14 +165,9 @@ def run_multihead_self_attention(
         device=in_features.device,
         dtype=in_features.dtype,
     )
-    m.load_state_dict(
-        {
-            "q_proj.weight": q_proj_weight,
-            "k_proj.weight": k_proj_weight,
-            "v_proj.weight": v_proj_weight,
-            "o_proj.weight": o_proj_weight,
-        }
-    )
+
+    qkv = torch.cat([q_proj_weight, k_proj_weight, v_proj_weight])
+    m.load_state_dict({"qkv_proj.weight": qkv, "o_proj.weight": o_proj_weight})
     return m(in_features)
 
 
