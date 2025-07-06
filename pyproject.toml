@@ -47,6 +47,7 @@ line-length = 120
 dev = [
     "ipykernel>=6.29.5",
     "jupyter>=1.1.1",
+    "matplotlib>=3.10.3",
     "scalene>=1.5.51",
     "sortedcontainers>=2.4.0",
 ]
