@@ -341,12 +341,7 @@ def run_transformer_block(
         max_seq_len=max_seq_len,
         rope=rope,
     )
-    q_proj = weights.pop("attn.q_proj.weight")
-    k_proj = weights.pop("attn.k_proj.weight")
-    v_proj = weights.pop("attn.v_proj.weight")
-    qkv_proj = torch.cat([q_proj, k_proj, v_proj])
-    weights["attn.qkv_proj.weight"] = qkv_proj
-    weights["attn.o_proj.weight"] = weights.pop("attn.output_proj.weight")
+    _attention_weights_adapter(weights, "attn")
     transformer_block.load_state_dict(weights)
 
     # Run the Transformer block
@@ -432,7 +427,21 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    from cs336_basics.modules import TransformerLM
+
+    lm = TransformerLM(
+        vocab_size=vocab_size,
+        context_length=context_length,
+        num_layers=num_layers,
+        d_model=d_model,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        rope_theta=rope_theta,
+    )
+    for i in range(num_layers):
+        _attention_weights_adapter(weights, f"layers.{i}.attn")
+    lm.load_state_dict(weights)
+    return lm(in_indices)
 
 
 def run_rmsnorm(
@@ -684,3 +693,13 @@ def run_train_bpe(
         special_tokens=special_tokens,
         debug=False,
     )
+
+
+def _attention_weights_adapter(weights: dict[str, Tensor], prefix: str) -> None:
+    q_proj = weights.pop(f"{prefix}.q_proj.weight")
+    k_proj = weights.pop(f"{prefix}.k_proj.weight")
+    v_proj = weights.pop(f"{prefix}.v_proj.weight")
+    qkv_proj = torch.cat([q_proj, k_proj, v_proj])
+    weights[f"{prefix}.qkv_proj.weight"] = qkv_proj
+    if f"{prefix}.o_proj.weight" not in weights:
+        weights[f"{prefix}.o_proj.weight"] = weights.pop(f"{prefix}.output_proj.weight")

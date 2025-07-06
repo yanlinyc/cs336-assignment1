@@ -1,11 +1,9 @@
-import math
 import torch
 from torch import Tensor
 import torch.nn as nn
-from einops import einsum, rearrange
-from jaxtyping import Float, Bool, Int
+from jaxtyping import Float, Int
 
-from .linear import Linear
+
 from .rope import RotaryPositionalEmbedding
 from .rmsnorm import RMSNorm
 from .ffn import SwiGLU
@@ -37,12 +35,10 @@ class TransformerBlock(nn.Module):
         self.ln2 = RMSNorm(d_model, **factory_kwargs)
 
     def forward(
-        self,
-        x: Float[Tensor, "... seq_len d_model"],
-        token_positions: Int[Tensor, "... seq_len"] | None = None,
+        self, x: Float[Tensor, "... seq_len d_model"]
     ) -> Float[Tensor, "... seq_len d_model"]:
         x_normed = self.ln1(x)
-        attn_output = self.attn(x_normed, token_positions=token_positions)
+        attn_output = self.attn(x_normed)
         y = x + attn_output
         y_normed = self.ln2(y)
         ffn_output = self.ffn(y_normed)

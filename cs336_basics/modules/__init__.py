@@ -5,6 +5,7 @@ from .ffn import SwiGLU
 from .rope import RotaryPositionalEmbedding
 from .attention import softmax, scaled_dot_product_attention, MultiHeadSelfAttention
 from .transformer_block import TransformerBlock
+from .lm import TransformerLM
 
 __all__ = [
     "Embedding",
@@ -16,4 +17,5 @@ __all__ = [
     "scaled_dot_product_attention",
     "MultiHeadSelfAttention",
     "TransformerBlock",
+    "TransformerLM",
 ]
