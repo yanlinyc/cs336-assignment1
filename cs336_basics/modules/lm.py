@@ -3,7 +3,7 @@ from torch import Tensor
 import torch.nn as nn
 from jaxtyping import Float
 
-from .rmsnorm import RMSNorm
+from .norm import RMSNorm
 from .linear import Linear
 from .embedding import Embedding
 from .rope import RotaryPositionalEmbedding

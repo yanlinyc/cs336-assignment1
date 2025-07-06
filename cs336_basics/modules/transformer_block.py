@@ -5,7 +5,7 @@ from jaxtyping import Float, Int
 
 
 from .rope import RotaryPositionalEmbedding
-from .rmsnorm import RMSNorm
+from .norm import RMSNorm
 from .ffn import SwiGLU
 from .attention import MultiHeadSelfAttention
 
