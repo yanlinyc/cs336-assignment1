@@ -1,4 +1,5 @@
-from typing import Self, Iterable, Iterator
+from typing import Self
+from collections.abc import Iterable, Iterator
 
 import regex as re
 
@@ -70,7 +71,7 @@ class BPETokenizer:
         """Decode a list of token IDs into a string."""
         tokens = [
             self.vocab.get(
-                id_, "\ufffd".encode("utf-8")
+                id_, "\ufffd".encode()
             )  # Use the replacement character for unknown tokens
             for id_ in ids
         ]

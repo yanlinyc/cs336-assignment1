@@ -1,6 +1,3 @@
-import torch
-import torch.nn as nn
-from einops import einsum, rearrange
 from torch import Tensor
 from jaxtyping import Float, Int
 

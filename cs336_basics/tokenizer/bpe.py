@@ -1,29 +1,25 @@
 import os
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 
 from tqdm.auto import tqdm
 
-
-from cs336_basics.utils import save_pickle, load_pickle
+from cs336_basics.utils import load_pickle, save_pickle
 
 from .pretokenization import pre_tokenize
 
-type TokenCounter = dict[tuple[bytes], int]
-
 
 def merge_tokens(
-    cur_tokens: TokenCounter,
-    pair_counts: TokenCounter,
-) -> tuple[TokenCounter, bytes, tuple[bytes, bytes]]:
-
+    cur_tokens: dict[tuple[bytes, ...], int],
+    pair_counts: dict[tuple[bytes, ...], int],
+) -> tuple[dict[tuple[bytes, ...], int], bytes, tuple[bytes, bytes]]:
     best_pair = max(pair_counts, key=lambda pair: (pair_counts[pair], pair))
     new_token = best_pair[0] + best_pair[1]
 
     # Create lookup for O(1) membership testing
     target_first, target_second = best_pair
 
-    new_tokens: TokenCounter = defaultdict(int)
+    new_tokens: dict[tuple[bytes, ...], int] = defaultdict(int)
     pair_updates = defaultdict(int)
 
     for tokens, count in cur_tokens.items():
@@ -49,7 +45,6 @@ def merge_tokens(
 
         while i < len(tokens):
             if i < len(tokens) - 1 and tokens[i] == target_first and tokens[i + 1] == target_second:
-
                 # Record pair changes around merge point
                 if i > 0:
                     old_pair = (tokens[i - 1], target_first)
@@ -145,13 +140,13 @@ def train_bpe_tokenizer(
         print(f"First 10 unique pre-tokens: {u_pre_tokens[:10]}")
         print(f"Last 10 unique pre-tokens: {u_pre_tokens[-10:]}")
         print(
-            f"Random 10 unique pre-tokens: {u_pre_tokens[::max(1, len(u_pre_tokens) // 10)][:10]}"
+            f"Random 10 unique pre-tokens: {u_pre_tokens[:: max(1, len(u_pre_tokens) // 10)][:10]}"
         )
 
     num_merges = vocab_size - len(vocab)
     print(f"Starting BPE training with {num_merges} merges.")
 
-    pair_counts: TokenCounter = defaultdict(int)
+    pair_counts: dict[tuple[bytes, ...], int] = defaultdict(int)
     for tokens, count in pre_tokens.items():
         for i in range(len(tokens) - 1):
             pair_counts[(tokens[i], tokens[i + 1])] += count
@@ -166,7 +161,7 @@ def train_bpe_tokenizer(
         if debug:
             print("---")
             best_pair = max(pair_counts, key=lambda pair: (pair_counts[pair], pair))
-            print(f"Current pairs:")
+            print("Current pairs:")
             print(f"Merge {iter + 1}/{num_merges}: {best_pair}")
             print(sorted(pair_counts.items(), key=lambda x: (x[1], x[0]), reverse=True)[:10])
 

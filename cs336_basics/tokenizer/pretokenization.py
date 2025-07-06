@@ -46,7 +46,7 @@ def pre_tokenize(
     with open(input_path, "rb") as f:
         boundaries = find_chunk_boundaries(
             file=f,
-            split_special_token="<|endoftext|>".encode("utf-8"),
+            split_special_token=b"<|endoftext|>",
             desired_chunk_size_in_bytes=1024 * 1024 * 64,  # 64 MB per chunk
         )
 

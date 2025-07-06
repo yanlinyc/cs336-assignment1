@@ -1,11 +1,11 @@
 import os
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 
-from tqdm.auto import tqdm
 from sortedcontainers import SortedSet
+from tqdm.auto import tqdm
 
-from cs336_basics.utils import save_pickle, load_pickle
+from cs336_basics.utils import load_pickle, save_pickle
 
 from .pretokenization import pre_tokenize
 
@@ -89,7 +89,7 @@ def train_bpe_tokenizer_optim(
         print(f"First 10 unique pre-tokens: {u_pre_tokens[:10]}")
         print(f"Last 10 unique pre-tokens: {u_pre_tokens[-10:]}")
         print(
-            f"Random 10 unique pre-tokens: {u_pre_tokens[::max(1, len(u_pre_tokens) // 10)][:10]}"
+            f"Random 10 unique pre-tokens: {u_pre_tokens[:: max(1, len(u_pre_tokens) // 10)][:10]}"
         )
 
     num_merges = vocab_size - len(vocab)
@@ -141,7 +141,7 @@ def train_bpe_tokenizer_optim(
         if debug:
             print("---")
             print(f"Merge {iter + 1}/{num_merges}: {best_pair}")
-            print(f"Current pairs:")
+            print("Current pairs:")
             print(sorted(pair_counts.items(), key=lambda x: (x[1], x[0]), reverse=True)[:10])
             print('occurrences: (b"h", b"e")')
             print(occurrences[(b"h", b"e")])
@@ -154,7 +154,6 @@ def train_bpe_tokenizer_optim(
 
         debug_p = iter >= 2
         if debug_p:
-
             print("sequence positions for best pair:", seq_pos)
             for seq_id, pos in seq_pos.items():
                 print(
@@ -273,7 +272,7 @@ if __name__ == "__main__":
 
         scalene_profiler.start()
 
-    vocab, merges = train_bpe_tokenizer(
+    vocab, merges = train_bpe_tokenizer_optim(
         input_path=args.input_path,
         vocab_size=args.vocab_size,
         special_tokens=args.special_tokens,

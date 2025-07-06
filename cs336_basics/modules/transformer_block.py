@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 import torch.nn as nn
-from jaxtyping import Float, Int
+from jaxtyping import Float
 
 
 from .rope import RotaryPositionalEmbedding
