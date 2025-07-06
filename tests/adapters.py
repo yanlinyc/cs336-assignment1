@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import os
-from typing import IO, Any, BinaryIO
 from collections.abc import Iterable
-from jaxtyping import Float, Int
+from typing import IO, Any, BinaryIO
 
 import numpy.typing as npt
 import torch
+from jaxtyping import Float, Int
 from torch import Tensor
 
 
@@ -208,7 +208,7 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    from cs336_basics.modules import RotaryPositionalEmbedding, MultiHeadSelfAttention
+    from cs336_basics.modules import MultiHeadSelfAttention, RotaryPositionalEmbedding
 
     d_k = d_model // num_heads
     rope = RotaryPositionalEmbedding(
@@ -330,7 +330,7 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    from cs336_basics.modules import TransformerBlock, RotaryPositionalEmbedding
+    from cs336_basics.modules import RotaryPositionalEmbedding, TransformerBlock
 
     rope = RotaryPositionalEmbedding(theta=theta, d_k=d_model // num_heads, max_seq_len=max_seq_len)
 
@@ -592,7 +592,15 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    raise NotImplementedError
+    from cs336_basics.optim import get_lr_cosine_schedule
+
+    return get_lr_cosine_schedule(
+        it=it,
+        max_lr=max_learning_rate,
+        min_lr=min_learning_rate,
+        warmup_iters=warmup_iters,
+        cosine_cycle_iters=cosine_cycle_iters,
+    )
 
 
 def run_save_checkpoint(
