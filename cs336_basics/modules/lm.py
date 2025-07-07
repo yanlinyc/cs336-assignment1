@@ -1,11 +1,11 @@
 import torch
-from torch import Tensor
 import torch.nn as nn
-from jaxtyping import Float
+from jaxtyping import Float, Int
+from torch import Tensor
 
-from .norm import RMSNorm
-from .linear import Linear
 from .embedding import Embedding
+from .linear import Linear
+from .norm import RMSNorm
 from .rope import RotaryPositionalEmbedding
 from .transformer_block import TransformerBlock
 
@@ -57,7 +57,7 @@ class TransformerLM(nn.Module):
 
     def forward(
         self,
-        x: Float[Tensor, "... seq_len d_model"],
+        x: Int[Tensor, "... seq_len"],
     ) -> Float[Tensor, "... seq_len d_model"]:
         x = self.token_embeddings(x)
         for layer in self.layers:
