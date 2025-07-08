@@ -1,5 +1,5 @@
-from typing import Self
 from collections.abc import Iterable, Iterator
+from typing import Self
 
 import regex as re
 
@@ -15,23 +15,21 @@ class BPETokenizer:
         merges: list[tuple[bytes, bytes]],
         special_tokens: list[str] | None = None,
     ):
-
         self.merges = merges.copy()
         self.vocab = vocab.copy()
         self.special_tokens = sorted(special_tokens or [], key=len, reverse=True)
         self.token2id = {v: k for k, v in self.vocab.items()}
         self.debug = False
+        self.eos_token_id = self.token2id[b"<|endoftext|>"]
 
     @classmethod
     def from_files(
         cls: type[Self],
-        vocab_filepath: str,
-        merges_filepath: str,
+        pretrained_filepath: str,
         special_tokens: list[str] | None = None,
     ) -> Self:
         """Load a BPE tokenizer from files."""
-        vocab = load_pickle(vocab_filepath)
-        merges = load_pickle(merges_filepath)
+        vocab, merges = load_pickle(pretrained_filepath)
         return cls(vocab, merges, special_tokens=special_tokens)
 
     def encode(self, text: str) -> list[int]:
@@ -58,13 +56,16 @@ class BPETokenizer:
         return [self.token2id[token] for token in results]
 
     def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
-        # from tqdm.auto import tqdm
+        from tqdm.auto import tqdm
 
-        # num_lines = sum(1 for _ in iterable)
-        # reset the iterator to the beginning
-        # iterable.seek(0)
-        # for text in tqdm(iterable, desc="Encoding texts", total=num_lines):
-        for text in iterable:
+        if hasattr(iterable, "seek") and callable(iterable.seek):
+            total = sum(1 for _ in iterable)
+            iterable.seek(0)
+        else:
+            iterable = list(iterable)
+            total = len(iterable)
+
+        for text in tqdm(iterable, desc="Encode text...", total=total):
             yield from self.encode(text)
 
     def decode(self, ids: list[int]) -> str:

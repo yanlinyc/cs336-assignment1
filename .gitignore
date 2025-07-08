@@ -29,6 +29,8 @@ MANIFEST
 # Datasets
 data/
 
+wandb/
+
 # Profiler output
 profile.html
 profile.json

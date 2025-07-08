@@ -31,3 +31,37 @@ def get_lr_cosine_schedule(
         return min_lr + 0.5 * (max_lr - min_lr) * (math.cos(cos_inner) + 1)
 
     return min_lr
+
+
+class LRScheduler:
+    def __call__(self, it: int) -> float:
+        raise NotImplementedError(
+            "LRScheduler is an abstract class, please implement the __call__ method."
+        )
+
+
+class CosineLRScheduler(LRScheduler):
+    def __init__(
+        self,
+        max_lr: float,
+        min_lr: float,
+        warmup_iters: int,
+        cosine_cycle_iters: int,
+    ):
+        self.max_lr = max_lr
+        self.min_lr = min_lr
+        self.warmup_iters = warmup_iters
+        self.cosine_cycle_iters = cosine_cycle_iters
+
+    def __call__(self, it: int) -> float:
+        return get_lr_cosine_schedule(
+            it, self.max_lr, self.min_lr, self.warmup_iters, self.cosine_cycle_iters
+        )
+
+
+class ConstantLRScheduler(LRScheduler):
+    def __init__(self, lr: float):
+        self.lr = lr
+
+    def __call__(self, it: int) -> float:
+        return self.lr

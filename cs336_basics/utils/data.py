@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import numpy.typing as npt
 import torch
@@ -6,7 +8,7 @@ from torch import Tensor
 
 
 def get_batch(
-    x: npt.NDArray[np.int_], batch_size: int, context_length: int, device: str
+    x: npt.NDArray[np.int64], batch_size: int, context_length: int, device: str
 ) -> tuple[Int[Tensor, " batch_size context_length"], Int[Tensor, " batch_size context_length"]]:
     """
     Loads a batch of data from the input array.
@@ -33,3 +35,9 @@ def get_batch(
     inputs = torch.from_numpy(inputs).to(device)
     targets = torch.from_numpy(targets).to(device)
     return inputs, targets
+
+
+def load_dataset(
+    data_path: str | os.PathLike,
+) -> npt.NDArray[np.int64]:
+    return np.memmap(data_path, dtype=np.int64, mode="r")

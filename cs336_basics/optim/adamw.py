@@ -4,6 +4,8 @@ from collections.abc import Callable
 import torch
 from torch.optim.optimizer import ParamsT
 
+from .lr_scheduler import LRScheduler
+
 
 class AdamW(torch.optim.Optimizer):
     def __init__(
@@ -13,10 +15,12 @@ class AdamW(torch.optim.Optimizer):
         betas: tuple[float, float] = (0.9, 0.999),
         eps: float = 1e-8,
         weight_decay: float = 0.01,
+        lr_scheduler: LRScheduler | None = None,
     ):
         if lr < 0:
             raise ValueError(f"Invalid learning rate: {lr}")
         defaults = {"lr": lr, "betas": betas, "eps": eps, "weight_decay": weight_decay}
+        self.lr_scheduler = lr_scheduler
         super().__init__(params, defaults)
 
     def step(self, closure: Callable | None = None):
@@ -31,6 +35,7 @@ class AdamW(torch.optim.Optimizer):
             eps = group["eps"]
             weight_decay = group["weight_decay"]
 
+            t = None
             for p in group["params"]:
                 if p.grad is None:
                     continue
@@ -56,4 +61,9 @@ class AdamW(torch.optim.Optimizer):
                 state["t"] = t
                 state["m"] = m
                 state["v"] = v
+
+            if self.lr_scheduler is not None:
+                assert t is not None, "Learning rate scheduler requires the iteration count."
+                group["lr"] = self.lr_scheduler(t)
+
         return loss
