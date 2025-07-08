@@ -48,3 +48,39 @@ gunzip owt_valid.txt.gz
 cd ..
 ```
 
+## Dataset
+
+### Train BPE
+``` sh
+uv run cs336_basics/bpe.py --input_path=data/sync/raw/TinyStoriesV2-GPT4-train.txt --vocab_size=10000
+uv run cs336_basics/bpe.py --input_path=data/sync/raw/owt_train.txt --vocab_size=32000 --pre_tokens_path=data/output/owt_train-pre_tokens.pkl
+```
+
+### Tokenization
+
+``` sh
+uv run cs336_basics/tokenizer/preprocess.py --data_path=data/sync/raw/TinyStoriesV2-GPT4-train.10k.txt \
+    --pretrained_filepath=data/sync/bpe/TinyStoriesV2-GPT4-train-bpe.pkl \
+    --output_path=data/sync/tokenized/TinyStoriesV2-GPT4-10k/train.npy
+
+uv run cs336_basics/tokenizer/preprocess.py --data_path=datdata/sync/raw/owt_train.txt \
+    --pretrained_filepath=data/sync/bpe/owt_train-bpe.pkl \
+    --output_path=data/sync/tokenized/owt/train.npy
+```
+
+### Sync data
+
+To upload the data to S3 bucket
+``` sh
+aws s3 sync ./data/sync s3://yanlinyc/cs336/assignment1-basics --profile yanlinyc
+```
+
+To download the data from S3 bucket
+``` sh
+aws s3 sync s3://yanlinyc/cs336/assignment1-basics ./data/sync --profile yanlinyc
+```
+
+## Train Model
+``` sh
+uv run cs336_basics/train.py --train_dataset_path=data/sync/tokenized/TinyStoriesV2-GPT4/train.npy
+```
