@@ -21,6 +21,7 @@ def test_train_bpe_speed():
         special_tokens=["<|endoftext|>"],
     )
     end_time = time.time()
+    print(f"BPE training took {end_time - start_time:.2f} seconds")
     assert end_time - start_time < 1.5
 
 
@@ -47,6 +48,11 @@ def test_train_bpe():
             )
             for merge_token_1, merge_token_2 in gpt2_reference_merges
         ]
+    # original = reference_merges
+    # reference_merges = reference_merges[:4]
+    # print(f"Reference merges: {len(reference_merges)} merges")
+    # print(f"Learned merges: {len(merges)} merges")
+    # print(original[197:210])
     assert merges == reference_merges
 
     # Compare the vocab to the expected output vocab

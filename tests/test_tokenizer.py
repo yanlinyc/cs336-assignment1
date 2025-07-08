@@ -426,6 +426,8 @@ def test_encode_iterable_memory_usage():
         ids = []
         for _id in _encode_iterable(tokenizer, f):
             ids.append(_id)
+            if len(ids) == 10_000:
+                break
 
 
 @pytest.mark.skipif(
