@@ -33,6 +33,23 @@ class TransformerLM(nn.Module):
         self.d_model = d_model
         self.num_heads = num_heads
         self.d_ff = d_ff
+        self.rope_theta = rope_theta
+
+        self.config = {
+            "vocab_size": vocab_size,
+            "context_length": context_length,
+            "num_layers": num_layers,
+            "d_model": d_model,
+            "num_heads": num_heads,
+            "d_ff": d_ff,
+            "rope_theta": rope_theta,
+            "device": device,
+            "dtype": dtype,
+        }
+        self.canonical_name = (
+            f"TransformerLM-vocab_{vocab_size}-context_{context_length}-layers_{num_layers}"
+            f"-d_model_{d_model}-num_heads_{num_heads}-d_ff_{d_ff}-rope_theta_{rope_theta}"
+        )
 
         self.rope = RotaryPositionalEmbedding(
             theta=rope_theta,

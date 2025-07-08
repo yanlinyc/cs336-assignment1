@@ -19,14 +19,15 @@ def save_checkpoint(
         iteration (int): The current iteration number.
         out (str | os.PathLike | typing.BinaryIO | typing.IO[bytes]): The output file path or file-like object.
     """
-    torch.save(
-        {
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "iteration": iteration,
-        },
-        out,
-    )
+    to_save = {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "iteration": iteration,
+    }
+    if hasattr(model, "config"):
+        to_save["config"] = model.config
+
+    torch.save(to_save, out)
 
 
 def load_checkpoint(
