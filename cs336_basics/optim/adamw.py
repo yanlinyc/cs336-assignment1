@@ -1,5 +1,6 @@
 import math
 from collections.abc import Callable
+from typing import Self
 
 import torch
 from torch.optim.optimizer import ParamsT
@@ -21,6 +22,14 @@ class AdamW(torch.optim.Optimizer):
             raise ValueError(f"Invalid learning rate: {lr}")
         defaults = {"lr": lr, "betas": betas, "eps": eps, "weight_decay": weight_decay}
         self.lr_scheduler = lr_scheduler
+        self.config = {
+            "lr": lr,
+            "betas": betas,
+            "eps": eps,
+            "weight_decay": weight_decay,
+        }
+        if lr_scheduler is not None:
+            self.config["lr_scheduler_config"] = lr_scheduler.config
         super().__init__(params, defaults)
 
     def step(self, closure: Callable | None = None):
@@ -67,3 +76,16 @@ class AdamW(torch.optim.Optimizer):
                 group["lr"] = self.lr_scheduler(t)
 
         return loss
+
+    @classmethod
+    def from_pretrained(
+        cls: type[Self], model: torch.nn.Module, config: dict, state_dict: dict | None = None
+    ) -> Self:
+        lr_scheduler_config = config.pop("lr_scheduler_config", None)
+        lr_scheduler = None
+        if lr_scheduler_config:
+            lr_scheduler = (LRScheduler.from_pretrained(lr_scheduler_config))
+        optimizer = cls(model.parameters(), lr_scheduler=lr_scheduler, **config)
+        if state_dict:
+            optimizer.load_state_dict(state_dict)
+        return optimizer

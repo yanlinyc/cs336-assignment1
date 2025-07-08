@@ -1,3 +1,5 @@
+from typing import Self
+
 import torch
 import torch.nn as nn
 from jaxtyping import Float, Int
@@ -46,6 +48,7 @@ class TransformerLM(nn.Module):
             "device": device,
             "dtype": dtype,
         }
+
         self.canonical_name = (
             f"TransformerLM-vocab_{vocab_size}-context_{context_length}-layers_{num_layers}"
             f"-d_model_{d_model}-num_heads_{num_heads}-d_ff_{d_ff}-rope_theta_{rope_theta}"
@@ -85,3 +88,18 @@ class TransformerLM(nn.Module):
         x = self.ln_final(x)
         x = self.lm_head(x)
         return x
+
+    @classmethod
+    def from_pretrained(cls: type[Self], config: dict, state_dict: dict) -> Self:
+        """
+        Load a TransformerLM model from a checkpoint dictionary.
+
+        Args:
+            checkpoint (dict): The checkpoint dictionary containing model parameters.
+
+        Returns:
+            TransformerLM: An instance of the TransformerLM model.
+        """
+        model = TransformerLM(**config)
+        model.load_state_dict(state_dict)
+        return model

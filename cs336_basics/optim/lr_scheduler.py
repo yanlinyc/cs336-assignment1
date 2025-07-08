@@ -1,4 +1,5 @@
 import math
+from typing import Self
 
 import torch
 
@@ -34,10 +35,35 @@ def get_lr_cosine_schedule(
 
 
 class LRScheduler:
+    def __init__(self, config: dict | None = None):
+        if config and "cls" not in config:
+            config["cls"] = self.__class__.__name__
+        self.config = config
+
     def __call__(self, it: int) -> float:
         raise NotImplementedError(
             "LRScheduler is an abstract class, please implement the __call__ method."
         )
+
+    @staticmethod
+    def from_pretrained(config: dict) -> Self:
+        """
+        Factory method to create an instance of the LRScheduler from a config dictionary.
+        """
+        cls_name = config.pop("cls", None)
+        if cls_name is None:
+            raise ValueError("Config must contain 'cls' key specifying the class name.")
+
+        match cls_name:
+            case "CosineLRScheduler":
+                return CosineLRScheduler(**config)
+            case "ConstantLRScheduler":
+                return ConstantLRScheduler(**config)
+            case _:
+                raise ValueError(
+                    f"Unknown LRScheduler class: {cls_name}. "
+                    "Available classes: CosineLRScheduler, ConstantLRScheduler."
+                )
 
 
 class CosineLRScheduler(LRScheduler):
@@ -52,6 +78,14 @@ class CosineLRScheduler(LRScheduler):
         self.min_lr = min_lr
         self.warmup_iters = warmup_iters
         self.cosine_cycle_iters = cosine_cycle_iters
+        super().__init__(
+            config={
+                "max_lr": max_lr,
+                "min_lr": min_lr,
+                "warmup_iters": warmup_iters,
+                "cosine_cycle_iters": cosine_cycle_iters,
+            }
+        )
 
     def __call__(self, it: int) -> float:
         return get_lr_cosine_schedule(
@@ -62,6 +96,7 @@ class CosineLRScheduler(LRScheduler):
 class ConstantLRScheduler(LRScheduler):
     def __init__(self, lr: float):
         self.lr = lr
+        super().__init__(config={"lr": lr})
 
     def __call__(self, it: int) -> float:
         return self.lr

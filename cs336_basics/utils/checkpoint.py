@@ -25,7 +25,9 @@ def save_checkpoint(
         "iteration": iteration,
     }
     if hasattr(model, "config"):
-        to_save["config"] = model.config
+        to_save["model_config"] = model.config
+    if hasattr(optimizer, "config"):
+        to_save["optimizer_config"] = optimizer.config
 
     torch.save(to_save, out)
 
@@ -50,3 +52,20 @@ def load_checkpoint(
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     return checkpoint["iteration"]
+
+
+def load_from_pretrained(
+    src: str | os.PathLike | BinaryIO | IO[bytes],
+) -> tuple[torch.nn.Module, torch.optim.Optimizer, int]:
+    from cs336_basics.modules import TransformerLM
+    from cs336_basics.optim import AdamW
+
+    checkpoint = torch.load(src)
+    model = TransformerLM.from_pretrained(
+        config=checkpoint["model_config"], state_dict=checkpoint["model_state_dict"]
+    )
+    optimizer = AdamW.from_pretrained(
+        model, config=checkpoint["optimizer_config"], state_dict=checkpoint["optimizer_state_dict"]
+    )
+    iteration = checkpoint["iteration"]
+    return model, optimizer, iteration
