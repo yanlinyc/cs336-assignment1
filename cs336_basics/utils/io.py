@@ -7,8 +7,8 @@ __all__ = ["load_pickle", "save_pickle"]
 
 def save_pickle(path: str | os.PathLike, data):
     """Save an object to a pickle file."""
-    if not isinstance(path, str) and not isinstance(path, os.PathLike):
-        raise TypeError("Path must be a string or os.PathLike object.")
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
     with open(path, "wb") as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)

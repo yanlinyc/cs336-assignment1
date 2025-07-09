@@ -52,8 +52,9 @@ cd ..
 
 ### Train BPE
 ``` sh
-uv run cs336_basics/bpe.py --input_path=data/sync/raw/TinyStoriesV2-GPT4-train.txt --vocab_size=10000
-uv run cs336_basics/bpe.py --input_path=data/sync/raw/owt_train.txt --vocab_size=32000 --pre_tokens_path=data/output/owt_train-pre_tokens.pkl
+uv run cs336_basics/tokenizer/bpe.py --input_path=data/sync/raw/TinyStoriesV2-GPT4-valid.txt --vocab_size=300
+uv run cs336_basics/tokenizer/bpe.py --input_path=data/sync/raw/TinyStoriesV2-GPT4-train.txt --vocab_size=10000
+uv run cs336_basics/tokenizer/bpe.py --input_path=data/sync/raw/owt_train.txt --vocab_size=32000 --pre_tokens_path=data/sync/bpe/owt_train-pre_tokens.pkl
 ```
 
 ### Tokenization

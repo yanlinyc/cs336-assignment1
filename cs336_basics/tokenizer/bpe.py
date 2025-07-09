@@ -6,7 +6,7 @@ from tqdm.auto import tqdm
 
 from cs336_basics.utils import load_pickle, save_pickle
 
-from .pretokenization import pre_tokenize
+from cs336_basics.tokenizer.pretokenization import pre_tokenize
 
 
 def merge_tokens(
