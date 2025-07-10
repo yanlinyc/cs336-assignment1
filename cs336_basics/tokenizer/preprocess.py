@@ -10,21 +10,28 @@ from tqdm.auto import tqdm
 from cs336_basics.tokenizer import BPETokenizer, find_chunk_boundaries
 
 
+# Global tokenizer variable per process
+_tokenizer = None
+
+def _init_tokenizer(pretrained_filepath: str, special_tokens: list[str]):
+    """Initializes the global tokenizer per process."""
+    global _tokenizer
+    _tokenizer = BPETokenizer.from_files(
+        pretrained_filepath=pretrained_filepath,
+        special_tokens=special_tokens,
+    )
+
+
 def _encode(
     start: int,
     end: int,
     input_path: str | os.PathLike,
-    pretrained_filepath: str | os.PathLike,
-    special_tokens: list[str],
 ) -> npt.NDArray[np.int64]:
-    tokenizer = BPETokenizer.from_files(
-        pretrained_filepath=pretrained_filepath,
-        special_tokens=special_tokens,
-    )
+    global _tokenizer
     with open(input_path, "rb") as f:
         f.seek(start)
         chunk = f.read(end - start).decode("utf-8", errors="ignore")
-    return np.array(tokenizer.encode(chunk), dtype=np.int64)
+    return np.array(_tokenizer.encode(chunk), dtype=np.int64)
 
 
 def _encode_star(
@@ -55,9 +62,13 @@ def tokenize_text_file(
         )
     # num_processes = max(1, os.cpu_count() - 4)
     num_processes = os.cpu_count()
-    with Pool(processes=num_processes) as pool:
+    with Pool(
+        processes=num_processes,
+        initializer=_init_tokenizer,
+        initargs=(pretrained_filepath, special_tokens),
+    ) as pool:
         args = [
-            (start, end, data_path, pretrained_filepath, special_tokens)
+            (start, end, data_path)
             for start, end in zip(boundaries[:-1], boundaries[1:])
         ]
         print(

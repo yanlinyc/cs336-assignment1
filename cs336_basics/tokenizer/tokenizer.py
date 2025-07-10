@@ -7,7 +7,7 @@ from cs336_basics.utils import load_pickle
 
 
 class BPETokenizer:
-    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+    PAT = re.compile(r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
 
     def __init__(
         self,
@@ -21,6 +21,9 @@ class BPETokenizer:
         self.token2id = {v: k for k, v in self.vocab.items()}
         self.debug = False
         self.eos_token_id = self.token2id[b"<|endoftext|>"]
+        self.merge_ranks = {
+            pair: i for i, pair in enumerate(self.merges)
+        }
 
     @classmethod
     def from_files(
@@ -32,7 +35,54 @@ class BPETokenizer:
         vocab, merges = load_pickle(pretrained_filepath)
         return cls(vocab, merges, special_tokens=special_tokens)
 
+    def bpe_encode(self, parts: list[bytes]) -> list[bytes]:
+        while True:
+            pairs = set(zip(parts, parts[1:]))
+            if not pairs:
+                break
+
+            # Find the merge with the lowest rank (highest priority).
+            best_pair = min(pairs, key=lambda p: self.merge_ranks.get(p, float("inf")))
+
+            # If the best pair isn't in our merge rules, we're done.
+            if self.merge_ranks.get(best_pair) is None:
+                break
+
+            # Merge the best pair.
+            new_parts = []
+            i = 0
+            while i < len(parts):
+                if i < len(parts) - 1 and (parts[i], parts[i + 1]) == best_pair:
+                    new_parts.append(parts[i] + parts[i + 1])
+                    i += 2
+                else:
+                    new_parts.append(parts[i])
+                    i += 1
+            parts = new_parts
+        return parts
+
     def encode(self, text: str) -> list[int]:
+        return self.encode_optim(text)
+
+    def encode_optim(self, text: str) -> list[int]:
+        """Encode a string into a list of token IDs."""
+        pre_tokens = self._pre_tokenize(text)
+        if self.debug:
+            print(f"[DEBUG] Original text: {text}")
+            print(f"[DEBUG] Pre-tokenized text: {pre_tokens}")
+
+        results = []
+        for pre_token in pre_tokens:
+            if len(pre_token) == 1 and pre_token[0] in self.token2id:
+                results.extend(pre_token)
+                continue
+            results.extend(self.bpe_encode(pre_token))
+
+        if self.debug:
+            print(f"[DEBUG] Merged tokens: {results}")
+        return [self.token2id[token] for token in results]
+
+    def encode_brute_force(self, text: str) -> list[int]:
         """Encode a string into a list of token IDs."""
         pre_tokens = self._pre_tokenize(text)
         if self.debug:
@@ -97,6 +147,6 @@ class BPETokenizer:
             if split in self.special_tokens:
                 output.append([split.encode("utf-8")])
             else:
-                for match in re.finditer(BPETokenizer.PAT, split):
+                for match in BPETokenizer.PAT.finditer(split):
                     output.append([b.to_bytes() for b in match.group(0).encode("utf-8")])
         return output

@@ -64,7 +64,11 @@ uv run cs336_basics/tokenizer/preprocess.py --data_path=data/sync/raw/TinyStorie
     --pretrained_filepath=data/sync/bpe/TinyStoriesV2-GPT4-train-bpe.pkl \
     --output_path=data/sync/tokenized/TinyStoriesV2-GPT4-10k/train.npy
 
-uv run cs336_basics/tokenizer/preprocess.py --data_path=datdata/sync/raw/owt_train.txt \
+uv run scalene cs336_basics/tokenizer/preprocess.py --data_path=data/sync/raw/TinyStoriesV2-GPT4-valid.txt \
+    --pretrained_filepath=data/sync/bpe/TinyStoriesV2-GPT4-train-bpe.pkl \
+    --output_path=data/output/tokenized_TinyStoriesV2-GPT4-valid.npy
+
+uv run cs336_basics/tokenizer/preprocess.py --data_path=data/sync/raw/owt_train.txt \
     --pretrained_filepath=data/sync/bpe/owt_train-bpe.pkl \
     --output_path=data/sync/tokenized/owt/train.npy
 ```
