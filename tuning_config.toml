@@ -1,0 +1,35 @@
+[training]
+output_dir = "output/checkpoints"
+context_length = 256
+train_batch_size = 32
+eval_batch_size = 32
+num_iterations = 20
+eval_num_batches = 10
+save_steps = 100
+eval_steps = 10
+logging_steps = 10
+device = "cpu"
+debug_fixed_minibatch = true
+random_seed = 42
+
+[model]
+vocab_size = 10000
+context_length = 256
+num_layers = 4
+d_model = 512
+num_heads = 16
+d_ff = 1344
+rope_theta = 10000.0
+
+[optimizer]
+learning_rate = 1e-3
+weight_decay = 0.01
+betas = [0.9, 0.999]
+eps = 1e-9
+
+[optimizer.lr_scheduler_config]
+cls = "CosineLRScheduler"
+warmup_iters = 0
+cosine_cycle_iters = 100
+min_lr = 1e-5
+max_lr = 1e-3

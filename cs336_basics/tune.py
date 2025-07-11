@@ -35,9 +35,6 @@ def run_training(
         model = TransformerLM(**asdict(model_config), device=training_args.device)
         optimizer = AdamW.from_pretrained(model, asdict(optimizer_config))
 
-    param_counts = sum(p.numel() for p in model.parameters())
-    print(f"Total parameters: {param_counts:,}")
-
     train_loop(
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
