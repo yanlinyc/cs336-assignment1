@@ -1,11 +1,14 @@
 import os
 import tomllib
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, is_dataclass
+from typing import TypeVar, get_type_hints
 
 import numpy as np
 import numpy.typing as npt
 import torch
 import tyro
+from ray import tune
+from ray.air.integrations.wandb import setup_wandb
 from tqdm.auto import tqdm
 
 import wandb
@@ -13,6 +16,24 @@ from cs336_basics.modules import TransformerLM, cross_entropy
 from cs336_basics.optim import AdamW
 from cs336_basics.utils import save_checkpoint
 from cs336_basics.utils.data import get_batch
+
+T = TypeVar("T")
+
+
+def from_dict(cls: type[T], data: dict) -> T:
+    if not is_dataclass(cls):
+        raise ValueError(f"{cls} is not a dataclass")
+
+    fieldtypes = get_type_hints(cls)
+    init_args = {}
+    for field_name, field_type in fieldtypes.items():
+        if field_name in data:
+            value = data[field_name]
+            if is_dataclass(field_type) and isinstance(value, dict):
+                init_args[field_name] = from_dict(field_type, value)
+            else:
+                init_args[field_name] = value
+    return cls(**init_args)
 
 
 @dataclass
@@ -61,6 +82,16 @@ class TrainingArguments:
 
 
 @dataclass
+class TuningArguments:
+    enabled: bool = False
+    output_dir: str | os.PathLike = "output/tuning"
+    num_tune_samples: int = 10
+    gpus_per_trial: float = 0.5
+    num_cpus_per_trial: int = 2
+    max_iterations: int = 10
+
+
+@dataclass
 class Config:
     train_dataset_path: str | os.PathLike = ""
     eval_dataset_path: str | os.PathLike | None = None
@@ -69,6 +100,7 @@ class Config:
     model: ModelConfig = field(default_factory=ModelConfig)
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     training: TrainingArguments = field(default_factory=TrainingArguments)
+    tuning: TuningArguments = field(default_factory=TuningArguments)
 
 
 def dict_to_dataclass(cls, data: dict):
@@ -90,23 +122,31 @@ def train_loop(
     optimizer: AdamW,
     args: TrainingArguments,
     start_iteration: int = 0,
+    tune_params_config: dict | None = None,
+    verbose: bool = False,
 ):
-    print(f"Starting training with model: {model}")
-    print(f"optimizer: {optimizer}")
-    print(f"Training arguments: {args}")
+    if verbose:
+        print(f"Starting training with model: {model}")
+        print(f"optimizer: {optimizer}")
+        print(f"Training arguments: {args}")
+        print(f"Tuning parameters: {tune_params_config}")
 
-    wandb.init(
-        project="cs336",
-        entity="yanlinyc-thatcher",
-        name=f"train-{model.canonical_name}",
-        config={
-            "model_config": model.config,
-            "optimizer_config": optimizer.config,
-            "training_args": asdict(args),
-        },
-    )
+    if tune_params_config:
+        wandb_run = setup_wandb(
+            project="cs336", entity="yanlinyc-thatcher", config=tune_params_config
+        )
+    else:
+        wandb_run = wandb.init(
+            project="cs336",
+            entity="yanlinyc-thatcher",
+            name=f"train-{model.canonical_name}",
+            config={
+                "model_config": model.config,
+                "optimizer_config": optimizer.config,
+                "training_args": asdict(args),
+            },
+        )
 
-    print(f"wandb.run.id: {wandb.run.id}")
     args.output_dir = os.path.join(args.output_dir, wandb.run.id)
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
@@ -153,12 +193,13 @@ def train_loop(
         optimizer.step()
 
         if args.logging_steps > 0 and step % args.logging_steps == 0:
-            print(
-                f"Step {step}/{args.num_iterations}, "
-                f"Loss: {loss.item():.4f}, "
-                f"Learning Rate: {optimizer.param_groups[0]['lr']:.6f}"
-            )
-            wandb.log(
+            if verbose:
+                print(
+                    f"Step {step}/{args.num_iterations}, "
+                    f"Loss: {loss.item():.4f}, "
+                    f"Learning Rate: {optimizer.param_groups[0]['lr']:.6f}"
+                )
+            wandb_run.log(
                 {
                     "step": step,
                     "loss": loss.item(),
@@ -167,7 +208,7 @@ def train_loop(
                 | compute_norms(model)
             )
 
-        if eval_dataset and args.eval_steps > 0 and step % args.eval_steps == 0:
+        if eval_dataset is not None and args.eval_steps > 0 and step % args.eval_steps == 0:
             running_vloss = 0.0
             model.eval()
             with torch.no_grad():
@@ -183,10 +224,14 @@ def train_loop(
                     running_vloss += eval_loss.item()
                 avg_vloss = running_vloss / args.eval_num_batches
             model.train(True)
-            print(
-                f"Step {step}/{args.num_iterations}, Loss: {loss.item():.4f}, Eval Loss: {avg_vloss:.4f}"
-            )
-            wandb.log({"eval_loss": avg_vloss})
+            if verbose:
+                print(
+                    f"Step {step}/{args.num_iterations}, Loss: {loss.item():.4f}, Eval Loss: {avg_vloss:.4f}"
+                )
+            eval_report = {"eval_loss": avg_vloss}
+            wandb_run.log(eval_report)
+            if tune_params_config:
+                tune.report(eval_report)
 
         if args.save_steps > 0 and step % args.save_steps == 0:
             output_path = os.path.join(args.output_dir, f"checkpoint-{step}.pt")
@@ -197,8 +242,8 @@ def train_loop(
                 iteration=step,
                 out=output_path,
             )
-            print(f"Saved checkpoint at step {step} to {output_path}")
-    print("Training complete.")
+            if verbose:
+                print(f"Saved checkpoint at step {step} to {output_path}")
     output_path = os.path.join(args.output_dir, f"final_checkpoint-{args.num_iterations}.pt")
     save_checkpoint(
         model=model,
@@ -207,7 +252,7 @@ def train_loop(
         out=output_path,
     )
     print(f"Saved final checkpoint to {output_path}")
-    wandb.finish()
+    wandb_run.finish()
 
 
 def parse_arguments() -> Config:

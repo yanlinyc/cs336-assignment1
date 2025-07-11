@@ -89,3 +89,8 @@ aws s3 sync s3://yanlinyc/cs336/assignment1-basics ./data/sync --profile yanliny
 ``` sh
 uv run cs336_basics/train.py --train_dataset_path=data/sync/tokenized/TinyStoriesV2-GPT4/train.npy
 ```
+
+## Tune
+``` sh
+uv run cs336_basics/tune.py --config=tuning_config.toml --train_dataset_path=data/sync/tokenized/TinyStoriesV2-GPT4/train.npy
+```

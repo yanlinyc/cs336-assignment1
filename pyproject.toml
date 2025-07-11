@@ -49,6 +49,7 @@ dev = [
     "jupyter>=1.1.1",
     "matplotlib>=3.10.3",
     "optuna>=4.4.0",
+    "ray[tune]>=2.47.1",
     "ruff>=0.12.2",
     "scalene>=1.5.51",
     "sortedcontainers>=2.4.0",
