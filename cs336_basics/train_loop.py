@@ -168,12 +168,16 @@ def train_loop(
 
     model.train(True)
     model.to(args.device)
+    cur_device = next(model.parameters()).device
+    print(f"Model is on device: {cur_device}")
+    args.device = cur_device
+
     if start_iteration > 0:
         print(f"Resuming training from iteration {start_iteration}.")
 
     for i in tqdm(
         range(start_iteration, start_iteration + args.num_iterations),
-        desc="Training",
+        desc=f"Training {wandb_run.name}",
         initial=start_iteration,
     ):
         step = i + 1
@@ -181,7 +185,7 @@ def train_loop(
             train_dataset,
             batch_size=args.train_batch_size,
             context_length=args.context_length,
-            device=args.device,
+            device=cur_device,
             fixed_starts=fixed_starts,
         )
 
@@ -217,7 +221,7 @@ def train_loop(
                         eval_dataset,
                         batch_size=args.eval_batch_size,
                         context_length=args.context_length,
-                        device=args.device,
+                        device=cur_device,
                     )
                     eval_predictions = model(eval_inputs)
                     eval_loss = cross_entropy(eval_predictions, eval_targets)

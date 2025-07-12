@@ -73,7 +73,7 @@ def main():
         param_space={
             "train_loop_config": asdict(config),
             "params_config": {
-                "lr": tune.loguniform(1e-4, 1e-2),
+                "lr": tune.loguniform(1e-5, 1e-2),
             },
         },
     )

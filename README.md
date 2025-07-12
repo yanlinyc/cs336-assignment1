@@ -92,5 +92,5 @@ uv run cs336_basics/train.py --train_dataset_path=data/sync/tokenized/TinyStorie
 
 ## Tune
 ``` sh
-uv run cs336_basics/tune.py --config=tuning_config.toml --train_dataset_path=data/sync/tokenized/TinyStoriesV2-GPT4/train.npy
+uv run cs336_basics/tune.py --config=tuning_config.toml --train_dataset_path=/home/yanlin_chen/repos/cs336-assignment1/data/sync/tokenized/TinyStoriesV2-GPT4/train.npy --eval_dataset_path=/home/yanlin_chen/repos/cs336-assignment1/data/sync/tokenized/TinyStoriesV2-GPT4/valid.npy
 ```
