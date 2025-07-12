@@ -2,7 +2,7 @@
 enabled = true
 output_dir = "output/tuning"
 num_tune_samples = 20
-gpus_per_trial = 0.3
+gpus_per_trial = 0.33
 num_cpus_per_trial = 4
 max_iterations = 10
 
@@ -11,11 +11,11 @@ output_dir = "output/checkpoints"
 context_length = 256
 train_batch_size = 32
 eval_batch_size = 32
-num_iterations = 40000
-eval_num_batches = 600
+num_iterations = 5000
+eval_num_batches = 200
 save_steps = -1
-eval_steps = 1000
-logging_steps = 500
+eval_steps = 400
+logging_steps = 200
 device = "cuda"
 debug_fixed_minibatch = false
 random_seed = 42
@@ -38,6 +38,6 @@ eps = 1e-9
 [optimizer.lr_scheduler_config]
 cls = "CosineLRScheduler"
 warmup_iters = 100
-cosine_cycle_iters = 10000
+cosine_cycle_iters = 4000
 min_lr = 1e-5
 max_lr = 1e-2
