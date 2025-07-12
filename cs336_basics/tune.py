@@ -1,6 +1,7 @@
 from dataclasses import asdict
 
 import numpy as np
+import optuna
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 from ray.tune.search import ConcurrencyLimiter
@@ -51,7 +52,8 @@ def main():
 
     assert config.tuning.enabled, "Tuning arguments must be provided for tuning."
 
-    algo = OptunaSearch()
+    # optuna.samplers.TPESampler, optuna.samplers.GPSampler
+    algo = OptunaSearch(sampler=optuna.samplers.GPSampler())
     algo = ConcurrencyLimiter(algo, max_concurrent=config.tuning.max_concurrent_trials)
     tuner = tune.Tuner(
         tune.with_resources(
@@ -62,11 +64,11 @@ def main():
             },
         ),
         tune_config=tune.TuneConfig(
+            metric="eval_loss",
+            mode="min",
             num_samples=config.tuning.num_tune_samples,
-            # search_alg=algo,
+            search_alg=algo,
             scheduler=ASHAScheduler(
-                metric="eval_loss",
-                mode="min",
                 time_attr="training_iteration",
                 max_t=config.tuning.max_iterations,
             ),

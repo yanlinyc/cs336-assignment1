@@ -52,6 +52,7 @@ dev = [
     "ray[tune]>=2.47.1",
     "ruff>=0.12.2",
     "scalene>=1.5.51",
+    "scipy>=1.16.0",
     "sortedcontainers>=2.4.0",
     "tyro>=0.9.26",
 ]
