@@ -3,6 +3,8 @@ from dataclasses import asdict
 import numpy as np
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
+from ray.tune.search import ConcurrencyLimiter
+from ray.tune.search.optuna import OptunaSearch
 
 from cs336_basics.modules import TransformerLM
 from cs336_basics.optim import AdamW
@@ -14,9 +16,8 @@ from cs336_basics.train_loop import (
 )
 
 
-def train_lm(tune_config: dict):
-    config = from_dict(Config, tune_config["train_loop_config"])
-    params_config = tune_config["params_config"]
+def train_lm(params_config: dict, train_loop_config: dict):
+    config = from_dict(Config, train_loop_config)
 
     train_dataset = np.load(config.train_dataset_path, mmap_mode="r")
     eval_dataset = None
@@ -50,9 +51,11 @@ def main():
 
     assert config.tuning.enabled, "Tuning arguments must be provided for tuning."
 
+    algo = OptunaSearch()
+    algo = ConcurrencyLimiter(algo, max_concurrent=config.tuning.max_concurrent_trials)
     tuner = tune.Tuner(
         tune.with_resources(
-            tune.with_parameters(train_lm),
+            tune.with_parameters(train_lm, train_loop_config=asdict(config)),
             resources={
                 "cpu": config.tuning.num_cpus_per_trial,
                 "gpu": config.tuning.gpus_per_trial,
@@ -60,6 +63,7 @@ def main():
         ),
         tune_config=tune.TuneConfig(
             num_samples=config.tuning.num_tune_samples,
+            # search_alg=algo,
             scheduler=ASHAScheduler(
                 metric="eval_loss",
                 mode="min",
@@ -68,10 +72,7 @@ def main():
             ),
         ),
         param_space={
-            "train_loop_config": asdict(config),
-            "params_config": {
-                "lr": tune.loguniform(1e-5, 1e-2),
-            },
+            "lr": tune.loguniform(1e-5, 1e-2),
         },
     )
 

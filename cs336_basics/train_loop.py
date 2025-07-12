@@ -89,6 +89,7 @@ class TuningArguments:
     gpus_per_trial: float = 0.5
     num_cpus_per_trial: int = 2
     max_iterations: int = 10
+    max_concurrent_trials: int = 4
 
 
 @dataclass
