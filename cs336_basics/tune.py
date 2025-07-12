@@ -29,9 +29,14 @@ def train_lm(params_config: dict, train_loop_config: dict):
     if eval_dataset is not None:
         print(f"Loaded evaluation dataset from {config.eval_dataset_path}")
 
+    if "lr" in params_config:
+        config.optimizer.lr_scheduler_config.max_lr = params_config["lr"]
+        print(f"Using learning rate: {params_config['lr']}")
+    if "batch_size" in params_config:
+        config.training.train_batch_size = params_config["batch_size"]
+        print(f"Using batch size: {params_config['batch_size']}")
+
     iteration = 0
-    config.optimizer.lr_scheduler_config.max_lr = params_config["lr"]
-    print(f"Using learning rate: {params_config['lr']}")
     model = TransformerLM(**asdict(config.model), device=config.training.device)
     print(f"config.optimizer: {asdict(config.optimizer)}")
     optimizer = AdamW.from_pretrained(model, asdict(config.optimizer))
@@ -75,6 +80,7 @@ def main():
         ),
         param_space={
             "lr": tune.loguniform(1e-5, 1e-2),
+            "batch_size": tune.choice([16, 32, 64, 128]),
         },
     )
 

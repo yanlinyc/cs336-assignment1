@@ -1,11 +1,11 @@
 [tuning]
 enabled = true
 output_dir = "output/tuning"
-num_tune_samples = 30
-gpus_per_trial = 0.33
+num_tune_samples = 50
+gpus_per_trial = 1
 num_cpus_per_trial = 4
 max_iterations = 10
-max_concurrent_trials = 9
+max_concurrent_trials = 3
 
 [training]
 output_dir = "output/checkpoints"
