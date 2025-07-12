@@ -28,14 +28,11 @@ def train_lm(tune_config: dict):
         print(f"Loaded evaluation dataset from {config.eval_dataset_path}")
 
     iteration = 0
-    config.optimizer.lr = params_config["lr"]
+    config.optimizer.lr_scheduler_config.max_lr = params_config["lr"]
     print(f"Using learning rate: {params_config['lr']}")
     model = TransformerLM(**asdict(config.model), device=config.training.device)
     print(f"config.optimizer: {asdict(config.optimizer)}")
     optimizer = AdamW.from_pretrained(model, asdict(config.optimizer))
-
-    # param_counts = sum(p.numel() for p in model.parameters())
-    # print(f"Total parameters: {param_counts:,}")
 
     train_loop(
         train_dataset=train_dataset,

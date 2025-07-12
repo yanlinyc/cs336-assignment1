@@ -39,7 +39,12 @@ class AdamW(torch.optim.Optimizer):
                 loss = closure()
 
         for group in self.param_groups:
-            lr = group["lr"]
+            if self.lr_scheduler is None:
+                lr = group["lr"]
+            else:
+                step = next(iter(self.state.values()), {}).get("t", 0) + 1
+                lr = self.lr_scheduler(step)
+
             beta1, beta2 = group["betas"]
             eps = group["eps"]
             weight_decay = group["weight_decay"]
@@ -71,10 +76,6 @@ class AdamW(torch.optim.Optimizer):
                 state["m"] = m
                 state["v"] = v
 
-            if self.lr_scheduler is not None:
-                assert t is not None, "Learning rate scheduler requires the iteration count."
-                group["lr"] = self.lr_scheduler(t)
-
         return loss
 
     @classmethod
@@ -84,7 +85,7 @@ class AdamW(torch.optim.Optimizer):
         lr_scheduler_config = config.pop("lr_scheduler_config", None)
         lr_scheduler = None
         if lr_scheduler_config:
-            lr_scheduler = (LRScheduler.from_pretrained(lr_scheduler_config))
+            lr_scheduler = LRScheduler.from_pretrained(lr_scheduler_config)
         optimizer = cls(model.parameters(), lr_scheduler=lr_scheduler, **config)
         if state_dict:
             optimizer.load_state_dict(state_dict)

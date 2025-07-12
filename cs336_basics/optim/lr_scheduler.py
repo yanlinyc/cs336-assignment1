@@ -24,7 +24,7 @@ def get_lr_cosine_schedule(
     Returns:
         float: Learning rate for the current iteration.
     """
-    if it < warmup_iters:
+    if it <= warmup_iters:
         return it / warmup_iters * max_lr
 
     if it <= cosine_cycle_iters:
