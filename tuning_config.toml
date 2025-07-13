@@ -7,9 +7,9 @@ num_cpus_per_trial = 4
 max_iterations = 10
 max_concurrent_trials = 3
 # 32768000 = 32 * 256 * 4000
-# max_total_tokens = 32768000
+max_total_tokens = 32768000
 # for debugging
-max_total_tokens = 3276800
+# max_total_tokens = 3276800
 
 [training]
 output_dir = "output/checkpoints"

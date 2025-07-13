@@ -49,6 +49,11 @@ def train_lm(params_config: dict, train_loop_config: dict):
             f"train_batch_size {config.training.train_batch_size}, and max_iterations {config.tuning.max_iterations}."
         )
         print(f"Calculated eval_steps: {config.training.eval_steps}")
+        max_steps = config.tuning.max_total_tokens // (
+            config.training.context_length * config.training.train_batch_size
+        )
+        print(f"Max steps for tuning: {max_steps}")
+        config.optimizer.lr_scheduler_config.cosine_cycle_iters = max_steps
 
     iteration = 0
     model = TransformerLM(**asdict(config.model), device=config.training.device)
