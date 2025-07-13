@@ -54,6 +54,7 @@ def train_lm(params_config: dict, train_loop_config: dict):
         )
         print(f"Max steps for tuning: {max_steps}")
         config.optimizer.lr_scheduler_config.cosine_cycle_iters = max_steps
+        config.training.num_iterations = max_steps + 100
 
     iteration = 0
     model = TransformerLM(**asdict(config.model), device=config.training.device)
