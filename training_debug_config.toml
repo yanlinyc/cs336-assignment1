@@ -3,12 +3,13 @@ output_dir = "output/checkpoints"
 context_length = 256
 train_batch_size = 32
 eval_batch_size = 32
-num_iterations = 40000
-eval_num_batches = 650
-save_steps = 10000
-eval_steps = 5000
-logging_steps = 400
-device = "gpu"
+num_iterations = 100
+eval_num_batches = 10
+save_steps = 100
+eval_steps = 10
+logging_steps = 10
+device = "cpu"
+debug_fixed_minibatch = true
 random_seed = 42
 
 [model]
@@ -27,9 +28,7 @@ eps = 1e-9
 
 [optimizer.lr_scheduler_config]
 cls = "CosineLRScheduler"
-# 1% to 5% of the total training steps
-warmup_iters = 500
-# same as num_iterations
-cosine_cycle_iters = 40000
+warmup_iters = 10
+cosine_cycle_iters = 100
 min_lr = 1e-5
 max_lr = 1e-3
