@@ -44,6 +44,7 @@ class AdamW(torch.optim.Optimizer):
             else:
                 step = next(iter(self.state.values()), {}).get("t", 0) + 1
                 lr = self.lr_scheduler(step)
+                group["lr"] = lr
 
             beta1, beta2 = group["betas"]
             eps = group["eps"]
