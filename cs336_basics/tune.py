@@ -36,6 +36,20 @@ def train_lm(params_config: dict, train_loop_config: dict):
         config.training.train_batch_size = params_config["batch_size"]
         print(f"Using batch size: {params_config['batch_size']}")
 
+    if config.tuning.max_total_tokens > 0:
+        config.training.eval_steps = config.tuning.max_total_tokens // (
+            config.training.context_length
+            * config.training.train_batch_size
+            * config.tuning.max_iterations
+        )
+        assert config.training.eval_steps > 0, (
+            "eval_steps must be greater than 0. "
+            f"Check your max_total_tokens {config.tuning.max_total_tokens}, "
+            f"context_length {config.training.context_length}, "
+            f"train_batch_size {config.training.train_batch_size}, and max_iterations {config.tuning.max_iterations}."
+        )
+        print(f"Calculated eval_steps: {config.training.eval_steps}")
+
     iteration = 0
     model = TransformerLM(**asdict(config.model), device=config.training.device)
     print(f"config.optimizer: {asdict(config.optimizer)}")
@@ -56,6 +70,8 @@ def main():
     config = parse_arguments()
 
     assert config.tuning.enabled, "Tuning arguments must be provided for tuning."
+    if not ((config.training.eval_steps > 0) ^ (config.tuning.max_total_tokens > 0)):
+        raise ValueError("Either both eval_steps and max_total_tokens should be set, or neither.")
 
     # optuna.samplers.TPESampler, optuna.samplers.GPSampler
     algo = OptunaSearch(sampler=optuna.samplers.GPSampler())

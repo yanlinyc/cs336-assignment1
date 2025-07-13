@@ -6,6 +6,10 @@ gpus_per_trial = 1
 num_cpus_per_trial = 4
 max_iterations = 10
 max_concurrent_trials = 3
+# 32768000 = 32 * 256 * 4000
+# max_total_tokens = 32768000
+# for debugging
+max_total_tokens = 3276800
 
 [training]
 output_dir = "output/checkpoints"
@@ -17,7 +21,8 @@ eval_num_batches = 200
 # for debugging
 # eval_num_batches = 10
 save_steps = -1
-eval_steps = 400
+# eval_steps is calculated as max_total_tokens // (context_length * train_batch_size * max_iterations)
+eval_steps = -1
 # for debugging
 # eval_steps = 20
 logging_steps = 200
