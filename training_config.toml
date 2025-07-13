@@ -2,13 +2,14 @@
 output_dir = "output/checkpoints"
 context_length = 256
 train_batch_size = 32
-eval_batch_size = 32
+eval_batch_size = 512
 num_iterations = 40000
-eval_num_batches = 650
+# eval_num_batches = 5465963 / context_length / eval_batch_size
+eval_num_batches = 40
 save_steps = 10000
-eval_steps = 5000
+eval_steps = 2000
 logging_steps = 400
-device = "gpu"
+device = "cuda"
 random_seed = 42
 
 [model]
